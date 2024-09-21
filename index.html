@@ -88,17 +88,17 @@
                 const songList = document.getElementById('songList');
                 songList.innerHTML = '';
                 songs.forEach(song => {
-                    if (song.preview_url) {
+                    if (song.external_urls.spotify) {
                         const li = document.createElement('li');
                         li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ');
                         li.addEventListener('click', () => {
-                            document.getElementById('audio').src = song.preview_url; // Play song preview
-                            document.getElementById('audio').play();
+                            // Open the full song in Spotify
+                            window.open(song.external_urls.spotify, '_blank');
                         });
                         songList.appendChild(li);
                     } else {
                         const li = document.createElement('li');
-                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No Preview Available)';
+                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No URL Available)';
                         li.classList.add('unavailable');
                         songList.appendChild(li);
                     }
