@@ -3,172 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify Web Player</title>
+    <title>Advanced Spotify Player</title>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-        input[type="text"] {
-            width: 300px;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .song-list {
-            list-style: none;
-            padding: 0;
-            max-height: 300px;
-            overflow-y: auto;
-            width: 100%;
-            text-align: left;
-        }
-        .song-list li {
-            margin: 5px 0;
-            cursor: pointer;
-            padding: 10px;
-            background: #282828;
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-        }
-        .song-list li img {
-            width: 50px;
-            height: 50px;
-            margin-right: 10px;
-        }
-        .song-list li:hover {
-            background: #1db954;
-        }
-        .unavailable {
-            color: #999;
-        }
-        .pagination {
-            margin-top: 20px;
-        }
-        .pagination button {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            background: #1db954;
-            color: white;
-            cursor: pointer;
-            margin: 0 5px;
-        }
-        audio {
-            margin-top: 20px;
-            width: 100%;
-        }
+        /* Your styles here */
     </style>
 </head>
 <body>
-    <h1>Spotify Web Player</h1>
-    <input type="text" id="search" placeholder="Search for a song...">
-    <ul class="song-list" id="songList"></ul>
-    <div class="pagination">
-        <button id="prevPage" disabled>Previous</button>
-        <button id="nextPage">Next</button>
-    </div>
-    <audio id="audio" controls></audio>
+    <h1>Advanced Spotify Player</h1>
+    <button id="login">Log in with Spotify</button>
+    <div id="player"></div>
+    <ul id="songList"></ul>
 
     <script>
-        const clientId = '439a939c9365478cb27eea6dd019565a'; // Replace with your Client ID
-        const clientSecret = '4cae1297dbed4d94946933da67e9b044'; // Replace with your Client Secret
-        const tokenUrl = 'https://accounts.spotify.com/api/token';
-        const searchUrl = 'https://api.spotify.com/v1/search';
-        const songsPerPage = 5;
-        let currentPage = 0;
-        let allSongs = [];
+        const clientId = 'YOUR_CLIENT_ID'; // Replace with your Client ID
+        const redirectUri = 'YOUR_REDIRECT_URI'; // Replace with your Redirect URI
+        let accessToken;
 
-        async function getToken() {
-            const response = await fetch(tokenUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'grant_type=client_credentials'
+        document.getElementById('login').addEventListener('click', () => {
+            const scope = 'streaming user-read-email user-read-private';
+            window.location = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=token`;
+        });
+
+        const getTokenFromUrl = () => {
+            const hash = window.location.hash;
+            if (!hash) return null;
+            const token = hash.split('&').find(param => param.startsWith('access_token')).split('=')[1];
+            return token;
+        };
+
+        window.onload = () => {
+            accessToken = getTokenFromUrl();
+            if (accessToken) {
+                initializePlayer();
+            }
+        };
+
+        const initializePlayer = () => {
+            const player = new Spotify.Player({
+                name: 'Web Player',
+                getOAuthToken: cb => { cb(accessToken); },
+                volume: 0.5
+            });
+
+            // Connect to the player!
+            player.connect();
+
+            // Fetch and display songs, then play selected song
+            fetchSongs();
+        };
+
+        const fetchSongs = async () => {
+            // Example search, replace with your implementation
+            const response = await fetch(`https://api.spotify.com/v1/search?q=track_name&type=track`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             const data = await response.json();
-            return data.access_token;
-        }
+            displaySongs(data.tracks.items);
+        };
 
-        async function searchSongs(query) {
-            const token = await getToken();
-            const response = await fetch(`${searchUrl}?q=${query}&type=track`, {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            });
-            const data = await response.json();
-            allSongs = data.tracks.items;
-            currentPage = 0;
-            displaySongs();
-        }
-
-        function displaySongs() {
+        const displaySongs = (songs) => {
             const songList = document.getElementById('songList');
             songList.innerHTML = '';
-            const startIndex = currentPage * songsPerPage;
-            const endIndex = startIndex + songsPerPage;
-            const songsToDisplay = allSongs.slice(startIndex, endIndex);
+            songs.forEach(song => {
+                const li = document.createElement('li');
+                li.textContent = `${song.name} by ${song.artists.map(artist => artist.name).join(', ')}`;
+                li.addEventListener('click', () => {
+                    playSong(song.uri);
+                });
+                songList.appendChild(li);
+            });
+        };
 
-            songsToDisplay.forEach(song => {
-                if (song.external_urls.spotify) {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<img src="${song.album.images[0]?.url}" alt="${song.name} cover"> 
-                                    ${song.name} by ${song.artists.map(artist => artist.name).join(', ')}`;
-                    li.addEventListener('click', () => {
-                        // Ideally, you'd replace this with the actual audio URL
-                        // Here we use an example URL just for demonstration
-                        const audioUrl = song.preview_url; // Replace with actual stream URL if available
-                        document.getElementById('audio').src = audioUrl;
-                        document.getElementById('audio').play();
+        const playSong = (uri) => {
+            const player = new Spotify.Player({
+                name: 'Web Player',
+                getOAuthToken: cb => { cb(accessToken); },
+            });
+            player.connect().then(success => {
+                if (success) {
+                    player.resume().then(() => {
+                        player.play({ uris: [uri] });
                     });
-                    songList.appendChild(li);
-                } else {
-                    const li = document.createElement('li');
-                    li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No URL Available)';
-                    li.classList.add('unavailable');
-                    songList.appendChild(li);
                 }
             });
-
-            document.getElementById('prevPage').disabled = currentPage === 0;
-            document.getElementById('nextPage').disabled = endIndex >= allSongs.length;
-        }
-
-        document.getElementById('search').addEventListener('keypress', async function (e) {
-            if (e.key === 'Enter') {
-                const query = e.target.value;
-                await searchSongs(query);
-            }
-        });
-
-        document.getElementById('prevPage').addEventListener('click', () => {
-            if (currentPage > 0) {
-                currentPage--;
-                displaySongs();
-            }
-        });
-
-        document.getElementById('nextPage').addEventListener('click', () => {
-            if ((currentPage + 1) * songsPerPage < allSongs.length) {
-                currentPage++;
-                displaySongs();
-            }
-        });
+        };
     </script>
 </body>
 </html>
