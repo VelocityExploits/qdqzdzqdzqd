@@ -8,50 +8,103 @@
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
-            color: #ffffff;
+            color: #fff;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
             margin: 0;
         }
-
-        .container {
-            text-align: center;
+        h1 {
+            margin-bottom: 20px;
         }
-
-        #player {
-            margin-top: 20px;
+        input[type="text"] {
             width: 300px;
-            height: 380px;
-            border: 1px solid #1db954;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .song-list {
+            list-style: none;
+            padding: 0;
+        }
+        .song-list li {
+            margin: 5px 0;
+            cursor: pointer;
+            padding: 10px;
+            background: #282828;
+            border-radius: 5px;
+        }
+        .song-list li:hover {
+            background: #1db954;
+        }
+        .unavailable {
+            color: #999;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Spotify Web Player</h1>
-        <div id="player"></div>
-        <button id="login">Login with Spotify</button>
-    </div>
+    <h1>Spotify Web Player</h1>
+    <input type="text" id="search" placeholder="Search for a song...">
+    <ul class="song-list" id="songList"></ul>
+    <audio id="audio" controls></audio>
+
     <script>
-        const clientId = '439a939c9365478cb27eea6dd019565a';
-        const redirectUri = 'https://xenonexec.github.io/qdqzdzqdzqd/'; // Make sure this matches your GitHub Pages URL
-        const scopes = 'user-read-private user-read-email user-read-playback-state user-modify-playback-state';
+        const clientId = '439a939c9365478cb27eea6dd019565a'; // Replace with your Client ID
+        const clientSecret = '4cae1297dbed4d94946933da67e9b044'; // Replace with your Client Secret
+        const tokenUrl = 'https://accounts.spotify.com/api/token';
+        const searchUrl = 'https://api.spotify.com/v1/search';
 
-        document.getElementById('login').addEventListener('click', () => {
-            const authUrl = `https://accounts.spotify.com/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`;
-            window.location.href = authUrl;
-        });
+        async function getToken() {
+            const response = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'grant_type=client_credentials'
+            });
+            const data = await response.json();
+            return data.access_token;
+        }
 
-        window.onload = () => {
-            const hash = window.location.hash;
-            if (hash) {
-                const token = hash.split('&')[0].split('=')[1];
-                console.log('Access Token:', token);
-                // You can now use the token to call Spotify API
+        async function searchSongs(query) {
+            const token = await getToken();
+            const response = await fetch(`${searchUrl}?q=${query}&type=track`, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            const data = await response.json();
+            return data.tracks.items;
+        }
+
+        document.getElementById('search').addEventListener('keypress', async function (e) {
+            if (e.key === 'Enter') {
+                const query = e.target.value;
+                const songs = await searchSongs(query);
+                const songList = document.getElementById('songList');
+                songList.innerHTML = '';
+                songs.forEach(song => {
+                    if (song.preview_url) {
+                        const li = document.createElement('li');
+                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ');
+                        li.addEventListener('click', () => {
+                            document.getElementById('audio').src = song.preview_url; // Play song preview
+                            document.getElementById('audio').play();
+                        });
+                        songList.appendChild(li);
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No Preview Available)';
+                        li.classList.add('unavailable');
+                        songList.appendChild(li);
+                    }
+                });
             }
-        };
+        });
     </script>
 </body>
 </html>
