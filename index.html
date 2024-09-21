@@ -66,6 +66,10 @@
             cursor: pointer;
             margin: 0 5px;
         }
+        audio {
+            margin-top: 20px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -126,7 +130,11 @@
                     li.innerHTML = `<img src="${song.album.images[0]?.url}" alt="${song.name} cover"> 
                                     ${song.name} by ${song.artists.map(artist => artist.name).join(', ')}`;
                     li.addEventListener('click', () => {
-                        window.open(song.external_urls.spotify, '_blank');
+                        // Ideally, you'd replace this with the actual audio URL
+                        // Here we use an example URL just for demonstration
+                        const audioUrl = song.preview_url; // Replace with actual stream URL if available
+                        document.getElementById('audio').src = audioUrl;
+                        document.getElementById('audio').play();
                     });
                     songList.appendChild(li);
                 } else {
