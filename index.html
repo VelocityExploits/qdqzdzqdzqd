@@ -29,6 +29,10 @@
         .song-list {
             list-style: none;
             padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            width: 100%;
+            text-align: left;
         }
         .song-list li {
             margin: 5px 0;
@@ -36,6 +40,13 @@
             padding: 10px;
             background: #282828;
             border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .song-list li img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
         }
         .song-list li:hover {
             background: #1db954;
@@ -43,12 +54,28 @@
         .unavailable {
             color: #999;
         }
+        .pagination {
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #1db954;
+            color: white;
+            cursor: pointer;
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
     <h1>Spotify Web Player</h1>
     <input type="text" id="search" placeholder="Search for a song...">
     <ul class="song-list" id="songList"></ul>
+    <div class="pagination">
+        <button id="prevPage" disabled>Previous</button>
+        <button id="nextPage">Next</button>
+    </div>
     <audio id="audio" controls></audio>
 
     <script>
@@ -56,6 +83,9 @@
         const clientSecret = '4cae1297dbed4d94946933da67e9b044'; // Replace with your Client Secret
         const tokenUrl = 'https://accounts.spotify.com/api/token';
         const searchUrl = 'https://api.spotify.com/v1/search';
+        const songsPerPage = 5;
+        let currentPage = 0;
+        let allSongs = [];
 
         async function getToken() {
             const response = await fetch(tokenUrl, {
@@ -78,31 +108,57 @@
                 }
             });
             const data = await response.json();
-            return data.tracks.items;
+            allSongs = data.tracks.items;
+            currentPage = 0;
+            displaySongs();
+        }
+
+        function displaySongs() {
+            const songList = document.getElementById('songList');
+            songList.innerHTML = '';
+            const startIndex = currentPage * songsPerPage;
+            const endIndex = startIndex + songsPerPage;
+            const songsToDisplay = allSongs.slice(startIndex, endIndex);
+
+            songsToDisplay.forEach(song => {
+                if (song.external_urls.spotify) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<img src="${song.album.images[0]?.url}" alt="${song.name} cover"> 
+                                    ${song.name} by ${song.artists.map(artist => artist.name).join(', ')}`;
+                    li.addEventListener('click', () => {
+                        window.open(song.external_urls.spotify, '_blank');
+                    });
+                    songList.appendChild(li);
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No URL Available)';
+                    li.classList.add('unavailable');
+                    songList.appendChild(li);
+                }
+            });
+
+            document.getElementById('prevPage').disabled = currentPage === 0;
+            document.getElementById('nextPage').disabled = endIndex >= allSongs.length;
         }
 
         document.getElementById('search').addEventListener('keypress', async function (e) {
             if (e.key === 'Enter') {
                 const query = e.target.value;
-                const songs = await searchSongs(query);
-                const songList = document.getElementById('songList');
-                songList.innerHTML = '';
-                songs.forEach(song => {
-                    if (song.external_urls.spotify) {
-                        const li = document.createElement('li');
-                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ');
-                        li.addEventListener('click', () => {
-                            // Open the full song in Spotify
-                            window.open(song.external_urls.spotify, '_blank');
-                        });
-                        songList.appendChild(li);
-                    } else {
-                        const li = document.createElement('li');
-                        li.textContent = song.name + ' by ' + song.artists.map(artist => artist.name).join(', ') + ' (No URL Available)';
-                        li.classList.add('unavailable');
-                        songList.appendChild(li);
-                    }
-                });
+                await searchSongs(query);
+            }
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                displaySongs();
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if ((currentPage + 1) * songsPerPage < allSongs.length) {
+                currentPage++;
+                displaySongs();
             }
         });
     </script>
