@@ -36,7 +36,7 @@
     </div>
     <script>
         const clientId = '439a939c9365478cb27eea6dd019565a';
-        const redirectUri = 'http://localhost:5500'; // Change this to your actual redirect URI
+        const redirectUri = 'https://xenonexec.github.io/qdqzdzqdzqd/'; // Make sure this matches your GitHub Pages URL
         const scopes = 'user-read-private user-read-email user-read-playback-state user-modify-playback-state';
 
         document.getElementById('login').addEventListener('click', () => {
@@ -44,8 +44,6 @@
             window.location.href = authUrl;
         });
 
-        // After authentication, you can handle the access token here
-        // For demo purposes, this part is simplified
         window.onload = () => {
             const hash = window.location.hash;
             if (hash) {
